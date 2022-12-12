@@ -1,0 +1,27 @@
+#+title: First D Program
+#+author: Lens
+#+description: I haven't written any D before, but now I'm going to.
+#+created: <2022-12-12 Mon>
+
+* Build It
+
+#+begin_src sh
+  dmd main.d
+#+end_src
+
+** Run It
+
+#+begin_src sh
+  ./main
+#+end_src
+
+Alternatively, if on Windows:
+#+begin_src sh
+  main.exe
+#+end_src
+
+* The beginning
+
+I've installed ~dmd~ and put it in my path.
+
+I still want an Emacs ~d-mode~ but I'm not sure if one exists that supports Emacs > 26.
