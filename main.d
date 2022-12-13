@@ -1,5 +1,6 @@
 module first;
 import std.stdio;
+import std.format;
 
 alias Byte     = byte;
 alias Word     = ushort;
@@ -389,11 +390,31 @@ void emit(File f, Instruction i) {
   }
 }
 
-void emit(File f, Instruction i, QWord op) {
+void emit(File f, Instruction i, Register r) {
   static assert(I.MAX == 7);
   switch (i) {
-  case I.MOV:
+
   case I.PUSH:
+    Size s = regsize(r);
+    switch (s) {
+    case Size.WORD:
+      static Byte[1] b = [0x66];
+      f.rawWrite(b);
+      goto case;
+    case Size.QWORD:
+      if (regtop(r)) {
+        rex(f, false, false, false, true);
+      }
+      Byte[1] b = [0x50];
+      b[0] |= regbits(r) & 0b111;
+      f.rawWrite(b);
+      break;
+    default:
+      assert(0, format("Invalid register (size) passed with instruction %s: %s (%s)", i, r, s));
+    }
+    break;
+
+  case I.MOV:
   case I.POP:
   case I.ADD:
   case I.SUB:
@@ -402,14 +423,11 @@ void emit(File f, Instruction i, QWord op) {
   }
 }
 
-void emit(File f, Instruction i, Register op) {
+void emit(File f, Instruction i, QWord op) {
   static assert(I.MAX == 7);
   switch (i) {
-
-  case I.PUSH:
-    break;
-
   case I.MOV:
+  case I.PUSH:
   case I.POP:
   case I.ADD:
   case I.SUB:
