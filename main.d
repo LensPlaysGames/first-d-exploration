@@ -1,6 +1,9 @@
 module first;
+import std.array;
 import std.stdio;
 import std.format;
+import std.string;
+import std.conv;
 
 alias Byte     = byte;
 alias Word     = ushort;
@@ -8,13 +11,17 @@ alias DWord    = uint;
 alias QWord    = ulong;
 
 enum Size {
+  INVALID,
   BYTE,
   WORD,
   DWORD,
   QWORD,
+  REGISTER,
 }
 
 enum Register {
+  INVALID,
+
   RAX,
   EAX,
   AX,
@@ -494,14 +501,173 @@ void emit(File f, Instruction i, Byte op) {
   }
 }
 
+struct Operand {
+  Size size;
+  union {
+    Register r;
+    QWord q;
+    DWord d;
+    Word  w;
+    Byte  b;
+  }
+
+  string toString() const pure @safe
+  {
+    auto app = appender!string();
+    if (size == Size.REGISTER) {
+      app ~= to!string(r);
+      return app.data;
+    }
+
+    app ~= to!string(size);
+    app ~= ":";
+    switch (size) {
+    case Size.BYTE:
+      app ~= to!string(b);
+      break;
+    case Size.WORD:
+      app ~= to!string(w);
+      break;
+    case Size.DWORD:
+      app ~= to!string(d);
+      break;
+    case Size.QWORD:
+      app ~= to!string(q);
+      break;
+    case Size.REGISTER:
+      app ~= to!string(r);
+      break;
+    default: assert(0);
+    }
+    return app.data;
+  }
+}
+
+struct Value {
+  Instruction i;
+  Operand src;
+  Operand dst;
+}
+
+enum Section {
+  INVALID,
+  TEXT,
+  DATA,
+  BSS,
+}
+
+struct Label {
+  string name;
+  // Length of values array at time that label was encountered.
+  ulong index;
+}
+
 void main() {
+  string[] global_symbols = new string[0];
+  Label[] labels = new Label[0];
+  Value[] values = new Value[0];
+
+  Register[string] RegFromName =
+    ["rax" : R.RAX,
+     "rbx" : R.RBX,
+     "rcx" : R.RCX,
+     "rdx" : R.RDX,
+     "rsi" : R.RSI,
+     "rdi" : R.RDI,
+     "rsp" : R.RSP,
+     "rbp" : R.RBP,
+     ];
+
+  Instruction[string] InstructionFromName =
+    ["mov"  : I.MOV,
+     "add"  : I.ADD,
+     "sub"  : I.SUB,
+     "push" : I.PUSH,
+     "pop"  : I.POP,
+     "ret"  : I.RET,
+     ];
+
+  Operand parse_operand(string str) {
+    Operand operand;
+    if (str[0] == '$') {
+      str = str[1..str.length];
+      str = strip(str, ",");
+      if (!isNumeric(str)) assert(0, "Number must be given after dollar sign indicating a literal.");
+      operand.size = Size.DWORD;
+      operand.d = to!uint(str);
+    } else if (str[0] == '%') {
+      str = str[1..str.length];
+      operand.size = Size.REGISTER;
+      operand.r = RegFromName[str];
+      assert(operand.r, format("TODO: Handle register ... %s", str[1..str.length]));
+    }
+    return operand;
+  }
+
+  auto assembly = File("code.S", "r");
+
+  foreach(string line; lines(assembly)) {
+    Section section = Section.TEXT;
+    string[] words = split(line);
+    if (words.length == 0) continue;
+
+    // TODO: Strip words array of comments.
+
+    if (words.length == 1) {
+
+      // Handle no-operand instructions here
+      switch (words[0]) {
+      default:
+        if (words[0].endsWith(":")) {
+          labels ~= Label(chop(words[0]), values.length);
+          continue;
+        }
+        break;
+      }
+    }
+    if (words.length == 2) {
+      // Handle one-operand instructions here
+      switch (words[0]) {
+      case ".section":
+        if (words[1] != ".text") {
+          assert(0, "Sorry, sections other than `.text` are currently unsupported");
+        }
+        continue;
+        break;
+
+      case ".global":
+        global_symbols ~= words[1];
+        continue;
+
+        // TODO: Handle PUSH, POP
+
+      default: assert(0);
+      }
+    }
+    if (words.length == 3) {
+      // Handle two-operand instructions here
+      if (!(words[0] in InstructionFromName)) {
+        writeln("Invalid instruction: ", words[0]);
+        return;
+      }
+      values ~= Value
+        (InstructionFromName[words[0]],
+         parse_operand(words[1]),
+         parse_operand(words[2]));
+    }
+  }
+
+  writeln("Globals:", global_symbols);
+  writeln("Labels:", labels);
+  writeln(values);
+
   auto machine_code = File("out.bin", "w");
   emit(machine_code, I.PUSH, R.R8);
   emit(machine_code, I.PUSH, R.R8W);
   emit(machine_code, I.PUSH, R.RCX);
   emit(machine_code, I.PUSH, R.AX);
-  emit(machine_code, I.PUSH, cast(Byte)0x42);
-  emit(machine_code, I.PUSH, cast(Word)0x4242);
+  emit(machine_code, I.PUSH, cast(Byte)       0x42);
+  emit(machine_code, I.PUSH, cast(Word)     0x4242);
   emit(machine_code, I.PUSH, cast(DWord)0x42424242);
   emit(machine_code, I.RET);
 }
