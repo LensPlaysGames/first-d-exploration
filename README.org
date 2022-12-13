@@ -5,6 +5,7 @@
 
 * Build It
 
+Use any D compiler to compile =main.d=.
 #+begin_src sh
   dmd main.d
 #+end_src
@@ -20,8 +21,7 @@ Alternatively, if on Windows:
   main.exe
 #+end_src
 
-* The beginning
-
-I've installed ~dmd~ and put it in my path.
-
-I still want an Emacs ~d-mode~ but I'm not sure if one exists that supports Emacs > 26.
+Alternatively alternatively, use `rdmd` to run it like a script.
+#+begin_src sh
+  rdmd main.d
+#+end_src
