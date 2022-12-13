@@ -3,6 +3,15 @@
 #+description: I haven't written any D before, but now I'm going to.
 #+created: <2022-12-12 Mon>
 
+I haven't written anything in D, so now I have, and this is that thing
+I've written.
+
+It started as a ~"Hello, world"~.
+
+It turned into a toy x86_64 assembler.
+
+Lol.
+
 * Build It
 
 Use any D compiler to compile =main.d=.
