@@ -500,5 +500,8 @@ void main() {
   emit(machine_code, I.PUSH, R.R8W);
   emit(machine_code, I.PUSH, R.RCX);
   emit(machine_code, I.PUSH, R.AX);
+  emit(machine_code, I.PUSH, cast(Byte)0x42);
+  emit(machine_code, I.PUSH, cast(Word)0x4242);
+  emit(machine_code, I.PUSH, cast(DWord)0x42424242);
   emit(machine_code, I.RET);
 }
