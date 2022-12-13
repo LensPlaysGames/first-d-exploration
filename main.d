@@ -6,6 +6,13 @@ alias Word     = ushort;
 alias DWord    = uint;
 alias QWord    = ulong;
 
+enum Size {
+  BYTE,
+  WORD,
+  DWORD,
+  QWORD,
+}
+
 enum Register {
   RAX,
   EAX,
@@ -101,6 +108,99 @@ enum Register {
 };
 alias R = Register;
 
+static Size regsize(Register r) {
+  switch (r) {
+  case R.RAX:
+  case R.RCX:
+  case R.RDX:
+  case R.RBX:
+  case R.RSP:
+  case R.RBP:
+  case R.RSI:
+  case R.RDI:
+  case R.R8:
+  case R.R9:
+  case R.R10:
+  case R.R11:
+  case R.R12:
+  case R.R13:
+  case R.R14:
+  case R.R15:
+  case R.RIP:
+    return Size.QWORD;
+    break;
+
+  case R.EAX:
+  case R.EBX:
+  case R.ECX:
+  case R.EDX:
+  case R.ESI:
+  case R.EDI:
+  case R.ESP:
+  case R.EBP:
+  case R.EIP:
+  case R.R8D:
+  case R.R9D:
+  case R.R10D:
+  case R.R11D:
+  case R.R12D:
+  case R.R13D:
+  case R.R14D:
+  case R.R15D:
+    return Size.DWORD;
+    break;
+
+  case R.AX:
+  case R.BX:
+  case R.CX:
+  case R.DX:
+  case R.SI:
+  case R.DI:
+  case R.SP:
+  case R.BP:
+  case R.IP:
+  case R.R8W:
+  case R.R9W:
+  case R.R10W:
+  case R.R11W:
+  case R.R12W:
+  case R.R13W:
+  case R.R14W:
+  case R.R15W:
+    return Size.WORD;
+    break;
+
+  case R.AH:
+  case R.BH:
+  case R.CH:
+  case R.DH:
+    // TODO: Should we have separate size for high byte?
+    return Size.BYTE;
+    break;
+
+  case R.AL:
+  case R.BL:
+  case R.CL:
+  case R.DL:
+  case R.SIL:
+  case R.DIL:
+  case R.SPL:
+  case R.BPL:
+  case R.IPL:
+  case R.R8B:
+  case R.R9B:
+  case R.R10B:
+  case R.R11B:
+  case R.R12B:
+  case R.R13B:
+  case R.R14B:
+  case R.R15B:
+    return Size.BYTE;
+    break;
+  default: assert(0);
+  }
+}
+
 static Byte regbits(Register r) {
   switch (r) {
   case R.RAX: .. case R.AL:
@@ -153,6 +253,10 @@ static Byte regbits(Register r) {
     break;
   default: assert(0);
   }
+}
+
+static Byte regtop(Register r) {
+  return regbits(r) & 0b1000;
 }
 
 enum Instruction {
