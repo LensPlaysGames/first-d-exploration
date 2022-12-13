@@ -279,6 +279,66 @@ enum Instruction {
 };
 alias I = Instruction;
 
+struct Operand {
+  Size size;
+  union {
+    Register r;
+    QWord q;
+    DWord d;
+    Word  w;
+    Byte  b;
+  }
+
+  string toString() const pure @safe {
+    if (size == Size.INVALID) {
+      return "";
+    }
+
+    auto app = appender!string();
+    if (size == Size.REGISTER) {
+      app ~= to!string(r);
+      return app.data;
+    }
+
+    app ~= to!string(size);
+    app ~= ":";
+    switch (size) {
+    case Size.BYTE:
+      app ~= to!string(b);
+      break;
+    case Size.WORD:
+      app ~= to!string(w);
+      break;
+    case Size.DWORD:
+      app ~= to!string(d);
+      break;
+    case Size.QWORD:
+      app ~= to!string(q);
+      break;
+    default: assert(0, format("Unhandled size in Operand.toString(): %s", size));
+    }
+    return app.data;
+  }
+}
+
+struct Value {
+  Instruction i;
+  Operand src;
+  Operand dst;
+
+  string toString() const pure @safe {
+    auto app = appender!string();
+    app ~= to!string(i);
+    app ~= "|";
+    if (src.size != Size.INVALID) app ~= to!string(src);
+    if (dst.size != Size.INVALID) {
+      app ~= "|";
+      app ~= to!string(dst);
+    }
+    return app.data;
+  }
+}
+
 /**
  * A REX prefix must be encoded when:
  * - using 64-bit operand size and the instruction does not default to
@@ -501,54 +561,6 @@ void emit(File f, Instruction i, Byte op) {
   }
 }
 
-struct Operand {
-  Size size;
-  union {
-    Register r;
-    QWord q;
-    DWord d;
-    Word  w;
-    Byte  b;
-  }
-
-  string toString() const pure @safe
-  {
-    auto app = appender!string();
-    if (size == Size.REGISTER) {
-      app ~= to!string(r);
-      return app.data;
-    }
-
-    app ~= to!string(size);
-    app ~= ":";
-    switch (size) {
-    case Size.BYTE:
-      app ~= to!string(b);
-      break;
-    case Size.WORD:
-      app ~= to!string(w);
-      break;
-    case Size.DWORD:
-      app ~= to!string(d);
-      break;
-    case Size.QWORD:
-      app ~= to!string(q);
-      break;
-    case Size.REGISTER:
-      app ~= to!string(r);
-      break;
-    default: assert(0);
-    }
-    return app.data;
-  }
-}
-
-struct Value {
-  Instruction i;
-  Operand src;
-  Operand dst;
-}
-
 enum Section {
   INVALID,
   TEXT,
@@ -567,6 +579,7 @@ void main() {
   Label[] labels = new Label[0];
   Value[] values = new Value[0];
 
+  // TODO: The registers ...
   Register[string] RegFromName =
     ["rax" : R.RAX,
      "rbx" : R.RBX,
@@ -639,16 +652,18 @@ void main() {
         global_symbols ~= words[1];
         continue;
 
-        // TODO: Handle PUSH, POP
-
-      default: assert(0);
+      default:
+        if (!(words[0] in InstructionFromName)) {
+          assert(0, format("Invalid instruction: %s", words[0]));
+        }
+        values ~= Value(InstructionFromName[words[0]], parse_operand(words[1]), Operand());
+        continue;
       }
     }
     if (words.length == 3) {
       // Handle two-operand instructions here
       if (!(words[0] in InstructionFromName)) {
-        writeln("Invalid instruction: ", words[0]);
-        return;
+        assert(0, format("Invalid instruction: %s", words[0]));
       }
       values ~= Value
         (InstructionFromName[words[0]],
