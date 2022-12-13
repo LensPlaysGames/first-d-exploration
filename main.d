@@ -5,7 +5,155 @@ alias Byte     = byte;
 alias Word     = ushort;
 alias DWord    = uint;
 alias QWord    = ulong;
-alias Register = uint;
+
+enum Register {
+  RAX,
+  EAX,
+  AX,
+  AH,
+  AL,
+
+  RBX,
+  EBX,
+  BX,
+  BH,
+  BL,
+
+  RCX,
+  ECX,
+  CX,
+  CH,
+  CL,
+
+  RDX,
+  EDX,
+  DX,
+  DH,
+  DL,
+
+  RSI,
+  ESI,
+  SI,
+  SIL,
+
+  RDI,
+  EDI,
+  DI,
+  DIL,
+
+  RSP,
+  ESP,
+  SP,
+  SPL,
+
+  RBP,
+  EBP,
+  BP,
+  BPL,
+
+  RIP,
+  EIP,
+  IP,
+  IPL,
+
+  R8,
+  R8D,
+  R8W,
+  R8B,
+
+  R9,
+  R9D,
+  R9W,
+  R9B,
+
+  R10,
+  R10D,
+  R10W,
+  R10B,
+
+  R11,
+  R11D,
+  R11W,
+  R11B,
+
+  R12,
+  R12D,
+  R12W,
+  R12B,
+
+  R13,
+  R13D,
+  R13W,
+  R13B,
+
+  R14,
+  R14D,
+  R14W,
+  R14B,
+
+  R15,
+  R15D,
+  R15W,
+  R15B,
+
+  // TODO: XMM...
+
+};
+alias R = Register;
+
+static Byte regbits(Register r) {
+  switch (r) {
+  case R.RAX: .. case R.AL:
+    return 0b0000;
+    break;
+  case R.RCX: .. case R.CL:
+    return 0b0001;
+    break;
+  case R.RDX: .. case R.DL:
+    return 0b0010;
+    break;
+  case R.RBX: .. case R.BL:
+    return 0b0011;
+    break;
+  case R.RSP: .. case R.SPL:
+    return 0b0100;
+    break;
+  case R.RBP: .. case R.BPL:
+    return 0b0101;
+    break;
+  case R.RSI: .. case R.SIL:
+    return 0b0110;
+    break;
+  case R.RDI: .. case R.DIL:
+    return 0b0111;
+    break;
+  case R.R8: .. case R.R8B:
+    return 0b1000;
+    break;
+  case R.R9: .. case R.R9B:
+    return 0b1001;
+    break;
+  case R.R10: .. case R.R10B:
+    return 0b1010;
+    break;
+  case R.R11: .. case R.R11B:
+    return 0b1011;
+    break;
+  case R.R12: .. case R.R12B:
+    return 0b1100;
+    break;
+  case R.R13: .. case R.R13B:
+    return 0b1101;
+    break;
+  case R.R14: .. case R.R14B:
+    return 0b1110;
+    break;
+  case R.R15: .. case R.R15B:
+    return 0b1111;
+    break;
+  default: assert(0);
+  }
+}
 
 enum Instruction {
   INVALID,
@@ -63,7 +211,7 @@ alias I = Instruction;
  * - PUSHFQ
  * - RET (near)
  */
-void rex(File f, bool write, bool reg, bool index, bool base) {
+static void rex(File f, bool write, bool reg, bool index, bool base) {
   Byte[1] b;
   b[0] |= 0b01000000;
   b[0] |= write << 3;
@@ -73,9 +221,49 @@ void rex(File f, bool write, bool reg, bool index, bool base) {
   f.rawWrite(b);
 }
 
-void rexw(File f) {
+static void rexw(File f) {
   rex(f, true, false, false, false);
 }
+
+/**
+ * MOD bits:
+ * - 0b00: Indirect register addressing mode
+ *         SIB with no displacement when R/M == 0b100
+ *         Displacement only when R/M == 0b101
+ * - 0b01: One-byte signed displacement
+ * - 0b10: Four-byte signed displacement
+ * - 0b11: Direct register addressing mode
+ *
+ * REG bits: refers to a register
+ *
+ * RM bits: refers to either register or memory
+ */
+static void modrm(File f, Byte mod, Byte reg, Byte rm) {
+  Byte[1] b;
+  b[0] = 0;
+  b[0] |= (mod << 6) & 0b11000000;
+  b[0] |= (reg << 3) & 0b00111000;
+  b[0] |= rm         & 0b00000111;
+  f.rawWrite(b);
+}
+
+
+static void sib(File f, Byte scale, Byte index, Byte base) {
+  Byte[1] b;
+  b[0] |= (scale << 6) & 0b11000000;
+  b[0] |= (index << 3) & 0b00111000;
+  b[0] |= base         & 0b00000111;
+  f.rawWrite(b);
+}
+
+/** Order of opcode:
+ * [1. Legacy Prefix(es)]
+ * 2. Opcode with Prefix(es)
+ * [3. ModR/M]
+ * [4. SIB]
+ * [5. Displacement]
+ * [6. Immediate]
+ */
 
 void emit(File f, Instruction i) {
   static assert(I.MAX == 7);
@@ -100,12 +288,28 @@ void emit(File f, Instruction i) {
 void emit(File f, Instruction i, QWord op) {
   static assert(I.MAX == 7);
   switch (i) {
-  case MOV:
-  case PUSH:
-  case POP:
-  case ADD:
-  case SUB:
-  case RET:
+  case I.MOV:
+  case I.PUSH:
+  case I.POP:
+  case I.ADD:
+  case I.SUB:
+  case I.RET:
+  default: assert(0);
+  }
+}
+
+void emit(File f, Instruction i, Register op) {
+  static assert(I.MAX == 7);
+  switch (i) {
+
+  case I.PUSH:
+    break;
+
+  case I.MOV:
+  case I.POP:
+  case I.ADD:
+  case I.SUB:
+  case I.RET:
   default: assert(0);
   }
 }
@@ -115,15 +319,15 @@ void emit(File f, Instruction i, DWord op) {
   switch (i) {
 
   case I.PUSH:
-    static QWord[1] q = [op];
+    QWord[1] q = [op];
     f.rawWrite(q);
     break;
 
-  case MOV:
-  case POP:
-  case ADD:
-  case SUB:
-  case RET:
+  case I.MOV:
+  case I.POP:
+  case I.ADD:
+  case I.SUB:
+  case I.RET:
   default: assert(0);
   }
 }
@@ -131,12 +335,12 @@ void emit(File f, Instruction i, DWord op) {
 void emit(File f, Instruction i, Word op) {
   static assert(I.MAX == 7);
   switch (i) {
-  case MOV:
-  case PUSH:
-  case POP:
-  case ADD:
-  case SUB:
-  case RET:
+  case I.MOV:
+  case I.PUSH:
+  case I.POP:
+  case I.ADD:
+  case I.SUB:
+  case I.RET:
   default: assert(0);
   }
 }
@@ -144,12 +348,12 @@ void emit(File f, Instruction i, Word op) {
 void emit(File f, Instruction i, Byte op) {
   static assert(I.MAX == 7);
   switch (i) {
-  case MOV:
-  case PUSH:
-  case POP:
-  case ADD:
-  case SUB:
-  case RET:
+  case I.MOV:
+  case I.PUSH:
+  case I.POP:
+  case I.ADD:
+  case I.SUB:
+  case I.RET:
   default: assert(0);
   }
 }
