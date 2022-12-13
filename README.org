@@ -10,18 +10,21 @@ Use any D compiler to compile =main.d=.
   dmd main.d
 #+end_src
 
-** Run It
+You can now run it like any other executable.
 
+Linux:
 #+begin_src sh
   ./main
 #+end_src
 
-Alternatively, if on Windows:
+Windows:
 #+begin_src sh
   main.exe
 #+end_src
 
-Alternatively alternatively, use `rdmd` to run it like a script.
+* Run It
+
+Alternatively, use `rdmd` to run it like a script.
 #+begin_src sh
   rdmd main.d
 #+end_src
