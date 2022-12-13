@@ -441,8 +441,10 @@ void emit(File f, Instruction i, DWord op) {
   switch (i) {
 
   case I.PUSH:
-    QWord[1] q = [op];
-    f.rawWrite(q);
+    static Byte[1] b = [0x68];
+    f.rawWrite(b);
+    DWord[1] d = [op];
+    f.rawWrite(d);
     break;
 
   case I.MOV:
@@ -457,8 +459,15 @@ void emit(File f, Instruction i, DWord op) {
 void emit(File f, Instruction i, Word op) {
   static assert(I.MAX == 7);
   switch (i) {
-  case I.MOV:
+
   case I.PUSH:
+    static Byte[2] b = [0x66, 0x68];
+    f.rawWrite(b);
+    Word[1] d = [op];
+    f.rawWrite(d);
+    break;
+
+  case I.MOV:
   case I.POP:
   case I.ADD:
   case I.SUB:
@@ -470,8 +479,13 @@ void emit(File f, Instruction i, Word op) {
 void emit(File f, Instruction i, Byte op) {
   static assert(I.MAX == 7);
   switch (i) {
-  case I.MOV:
+
   case I.PUSH:
+    Byte[2] b = [0x6a, op];
+    f.rawWrite(b);
+    break;
+
+  case I.MOV:
   case I.POP:
   case I.ADD:
   case I.SUB:
@@ -482,5 +496,9 @@ void emit(File f, Instruction i, Byte op) {
 
 void main() {
   auto machine_code = File("out.bin", "w");
+  emit(machine_code, I.PUSH, R.R8);
+  emit(machine_code, I.PUSH, R.R8W);
+  emit(machine_code, I.PUSH, R.RCX);
+  emit(machine_code, I.PUSH, R.AX);
   emit(machine_code, I.RET);
 }
